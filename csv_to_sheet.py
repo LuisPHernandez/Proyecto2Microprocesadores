@@ -1,10 +1,9 @@
 import csv
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime
 
 # ==========================================================
-# CONFIGURACION
+# CONFIGURACIÓN-- python csv_to_sheet.py 
 # ==========================================================
 
 # Archivo CSV local
@@ -44,20 +43,26 @@ def conectar_google_sheets():
     print(" Conectado exitosamente")
     return client
 
-def obtener_o_crear_spreadsheet(client, nombre):
+def obtener_spreadsheet(client, nombre):
     """
-    Obtiene una hoja de cálculo existente o crea una nueva
+    Obtiene una hoja de cálculo existente
     """
     try:
-        # Intentar abrir hoja existente
         spreadsheet = client.open(nombre)
         print(f" Hoja '{nombre}' encontrada")
+        return spreadsheet
     except gspread.SpreadsheetNotFound:
-        # Crear nueva hoja
-        spreadsheet = client.create(nombre)
-        print(f" Nueva hoja '{nombre}' creada")
-    
-    return spreadsheet
+        print(f" Hoja '{nombre}' no encontrada")
+        print("\n INSTRUCCIONES:")
+        print("1. Crea manualmente una hoja en Google Sheets llamada 'Smart Home Data'")
+        print("2. Compártela con el email de tu cuenta de servicio")
+        print("   (Abre credentials.json y busca 'client_email')")
+        print("3. Darle permisos de 'Editor'")
+        print("4. Vuelve a ejecutar este script")
+        raise
+    except Exception as e:
+        print(f" Error: {e}")
+        raise
 
 def leer_csv(filename):
     """
@@ -74,21 +79,6 @@ def leer_csv(filename):
     print(f" {len(datos)} filas leídas")
     return datos
 
-def subir_datos_completos(worksheet, datos):
-    """
-    Sube todos los datos del CSV a la hoja
-    Borra el contenido anterior
-    """
-    print("Subiendo todos los datos...")
-    
-    # Limpiar hoja
-    worksheet.clear()
-    
-    # Subir datos
-    worksheet.update('A1', datos)
-    
-    print(f" {len(datos)} filas subidas")
-
 def subir_datos_incrementales(worksheet, datos):
     """
     Solo agrega las filas nuevas que no existen en la hoja
@@ -100,8 +90,8 @@ def subir_datos_incrementales(worksheet, datos):
     
     if not datos_existentes:
         # Si la hoja está vacía, subir todo
-        worksheet.update('A1', datos)
-        print(f"{len(datos)} filas subidas (hoja estaba vacía)")
+        worksheet.update('A1', datos, value_input_option='RAW')
+        print(f" {len(datos)} filas subidas (hoja estaba vacía)")
         return
     
     # Obtener la última fila de la hoja
@@ -113,46 +103,54 @@ def subir_datos_incrementales(worksheet, datos):
         filas_nuevas = datos[ultima_fila:]
         
         # Agregar al final de la hoja
-        worksheet.append_rows(filas_nuevas)
-        print(f" {len(filas_nuevas)} filas nuevas agregadas")
+        worksheet.append_rows(filas_nuevas, value_input_option='RAW')
+        print(f"{len(filas_nuevas)} filas nuevas agregadas")
     else:
-        print(" No hay filas nuevas para agregar")
+        print("No hay filas nuevas para agregar")
 
 def formatear_hoja(worksheet):
     """
-    Aplica formato basico a la hoja
+    Aplica formato básico a la hoja
     """
     print("Aplicando formato...")
     
-    # Formato del encabezado (primera fila)
-    worksheet.format('A1:F1', {
-        'textFormat': {'bold': True},
-        'backgroundColor': {'red': 0.2, 'green': 0.6, 'blue': 0.9}
-    })
-    
-    # Ajustar ancho de columnas
-    worksheet.set_column_width('A', 200)  # datetime
-    worksheet.set_column_width('B', 100)  # sound_avg
-    worksheet.set_column_width('C', 80)   # motion
-    worksheet.set_column_width('D', 80)   # temp
-    worksheet.set_column_width('E', 80)   # hum
-    worksheet.set_column_width('F', 80)   # dist
-    
-    print("Formato aplicado")
+    try:
+        # Formato del encabezado (primera fila)
+        worksheet.format('A1:F1', {
+            'textFormat': {'bold': True},
+            'backgroundColor': {'red': 0.2, 'green': 0.6, 'blue': 0.9},
+            'horizontalAlignment': 'CENTER'
+        })
+        
+        # Intentar ajustar ancho de columnas (compatible con múltiples versiones)
+        try:
+            # Método nuevo
+            worksheet.columns_auto_resize(0, 5)
+        except:
+            # Si falla, no es crítico
+            pass
+        
+        print(" Formato aplicado")
+        
+    except Exception as e:
+        print(f" Advertencia al aplicar formato: {e}")
+        print("  (Los datos se subieron correctamente)")
 
 # ==========================================================
 # MAIN
 # ==========================================================
 
 def main():
-    print("\n=== Subir CSV a Google Sheets ===\n")
+    print("\n" + "="*50)
+    print("     SUBIR CSV A GOOGLE SHEETS")
+    print("="*50 + "\n")
     
     try:
         # 1. Conectar con Google Sheets
         client = conectar_google_sheets()
         
-        # 2. Obtener o crear la hoja de cálculo
-        spreadsheet = obtener_o_crear_spreadsheet(client, SPREADSHEET_NAME)
+        # 2. Obtener la hoja de cálculo
+        spreadsheet = obtener_spreadsheet(client, SPREADSHEET_NAME)
         
         # 3. Obtener la primera worksheet (pestaña)
         worksheet = spreadsheet.sheet1
@@ -160,40 +158,45 @@ def main():
         # 4. Leer datos del CSV
         datos = leer_csv(CSV_FILENAME)
         
-        # 5. Subir datos (elegir uno de los dos métodos)
-        
-        # OPCIÓN A: Subir todo (borra y reemplaza)
-        # subir_datos_completos(worksheet, datos)
-        
-        # OPCIÓN B: Solo agregar filas nuevas (recomendado)
+        # 5. Subir datos (modo incremental)
+        print("\n Modo: INCREMENTAL (solo agrega filas nuevas)")
         subir_datos_incrementales(worksheet, datos)
         
         # 6. Formatear hoja
         formatear_hoja(worksheet)
         
-        # 7. Obtener URL de la hoja
-        print(f"\n Proceso completado!")
-        print(f"URL: {spreadsheet.url}")
-        
-    except FileNotFoundError:
-        print(f"\n✗ Error: No se encontró el archivo '{CSV_FILENAME}'")
-        print("Asegúrate de que el archivo CSV existe en el mismo directorio")
+        # 7. Mostrar resultado
+        print("\n" + "="*50)
+        print("PROCESO COMPLETADO EXITOSAMENTE")
+        print("="*50)
+        print(f"\n URL: {spreadsheet.url}\n")
         
     except FileNotFoundError as e:
-        if 'credentials.json' in str(e):
+        if CSV_FILENAME in str(e):
+            print(f"\n Error: No se encontró el archivo '{CSV_FILENAME}'")
+            print("   hay que ver que  el archivo CSV existe en el mismo directorio")
+        elif CREDENTIALS_FILE in str(e):
             print(f"\n Error: No se encontró '{CREDENTIALS_FILE}'")
-            print("\nPasos para obtener las credenciales:") #osea esto es bien importante ya que se tiene que hacer cada quien 
-            print("1. ir a: https://console.cloud.google.com/")
-            print("2. Crear un proyecto nuevo o selecciona uno existente")
-            print("3. Habilita la API de Google Sheets y Google Drive")
-            print("4. ir a 'Credenciales' y crea una 'Cuenta de servicio'")
-            print("5. Descargar el archivo JSON de credenciales")
-            print("6. Renómbrarlo como 'credentials.json' y colocarlo en este directorio")
+            print("\n PASOS PARA OBTENER CREDENCIALES:")
+            print("1. Ve a: https://console.cloud.google.com/")
+            print("2. Crea un proyecto o selecciona uno existente")
+            print("3. Habilita Google Sheets API y Google Drive API")
+            print("4. Ve a 'Credenciales' → 'Crear credenciales' → 'Cuenta de servicio'")
+            print("5. Descarga el archivo JSON")
+            print("6. Renómbralo como 'credentials.json' y colocarlo aquí")
         else:
-            raise
+            print(f"\nError de archivo: {e}")
             
+    except gspread.SpreadsheetNotFound:
+        # Ya se maneja en obtener_spreadsheet()
+        pass
+        
     except Exception as e:
         print(f"\n Error inesperado: {e}")
+        print("\n Verifica que:")
+        print("   - se Compartiera la hoja con la cuenta de servicio")
+        print("   - darle permisos de 'Editor'")
+        print("   - El nombre de la hoja es exactamente 'Smart Home Data'")
 
 if __name__ == "__main__":
     main()
