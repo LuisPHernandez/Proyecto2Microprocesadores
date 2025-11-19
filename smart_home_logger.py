@@ -7,6 +7,7 @@ import subprocess
 import threading
 from datetime import datetime
 import paho.mqtt.client as mqtt
+import requests
 
 # ==========================================================
 # CONFIGURACIÓN GENERAL
@@ -68,6 +69,24 @@ def mqtt_enviar_datastream(pin, valor):
     print(f"[MQTT] publish -> {topic} = {payload}")
     client.publish(topic, payload)
 
+BLYNK_HTTP_URL = "https://blynk.cloud/external/api/update"  # endpoint HTTP de Blynk
+
+def blynk_set_pin_http(pin, value):
+    """
+    pin: string tipo 'V1', 'V2', 'V3'
+    value: 0 o 1 (o el valor que quieras enviar)
+    """
+    params = {
+        "token": TOKEN,
+        pin: value
+    }
+    try:
+        r = requests.get(BLYNK_HTTP_URL, params=params, timeout=5)
+        # Opcional: debug
+        print(f"[HTTP] set {pin} = {value} -> status {r.status_code}, resp: {r.text}")
+    except Exception as e:
+        print("[HTTP] Error actualizando Blynk:", e)
+
 # ==========================================================
 # CALLBACKS MQTT
 # ==========================================================
@@ -116,19 +135,19 @@ def manejar_accion_de_cuda(salida):
     if accion == "TOGGLE_LED":
         nuevo = 1 - estado_actual["LED"]
         estado_actual["LED"] = nuevo
-        mqtt_enviar_datastream("V1", nuevo)  
+        blynk_set_pin_http("V1", nuevo)  
 
     # TOGGLE MOTOR
     elif accion == "TOGGLE_MOTOR":
         nuevo = 1 - estado_actual["MOTOR"]
         estado_actual["MOTOR"] = nuevo
-        mqtt_enviar_datastream("V2", nuevo) 
+        blynk_set_pin_http("V2", nuevo)
 
     # TOGGLE BUZZER
     elif accion == "TOGGLE_BUZZER":
         nuevo = 1 - estado_actual["BUZZER"]
         estado_actual["BUZZER"] = nuevo
-        mqtt_enviar_datastream("V3", nuevo)  
+        blynk_set_pin_http("V3", nuevo) 
 
     else:
         print("CUDA devolvió una acción desconocida:", accion)
