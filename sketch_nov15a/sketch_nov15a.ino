@@ -32,8 +32,8 @@ float temperatureC = NAN;
 int motion = 0;
 
 char auth[] = "WDMTk4LR1zuQM_S7vXd2fjL7odvoTJqt";
-char ssid[] = "ESP";
-char pass[] = "hola0409";
+char ssid[] = "WiFiFoFum";
+char pass[] = "3H1HLR7ACBAA";
 
 // ======================================================
 // BLYNK
