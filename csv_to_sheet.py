@@ -4,7 +4,7 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 # ==========================================================
-# CONFIGURACIÓN
+# CONFIGURACION
 # ==========================================================
 
 # Archivo CSV local
@@ -41,7 +41,7 @@ def conectar_google_sheets():
     # Autorizar cliente
     client = gspread.authorize(credentials)
     
-    print("✓ Conectado exitosamente")
+    print(" Conectado exitosamente")
     return client
 
 def obtener_o_crear_spreadsheet(client, nombre):
@@ -51,11 +51,11 @@ def obtener_o_crear_spreadsheet(client, nombre):
     try:
         # Intentar abrir hoja existente
         spreadsheet = client.open(nombre)
-        print(f"✓ Hoja '{nombre}' encontrada")
+        print(f" Hoja '{nombre}' encontrada")
     except gspread.SpreadsheetNotFound:
         # Crear nueva hoja
         spreadsheet = client.create(nombre)
-        print(f"✓ Nueva hoja '{nombre}' creada")
+        print(f" Nueva hoja '{nombre}' creada")
     
     return spreadsheet
 
@@ -71,7 +71,7 @@ def leer_csv(filename):
         for row in reader:
             datos.append(row)
     
-    print(f"✓ {len(datos)} filas leídas")
+    print(f" {len(datos)} filas leídas")
     return datos
 
 def subir_datos_completos(worksheet, datos):
@@ -87,7 +87,7 @@ def subir_datos_completos(worksheet, datos):
     # Subir datos
     worksheet.update('A1', datos)
     
-    print(f"✓ {len(datos)} filas subidas")
+    print(f" {len(datos)} filas subidas")
 
 def subir_datos_incrementales(worksheet, datos):
     """
@@ -101,7 +101,7 @@ def subir_datos_incrementales(worksheet, datos):
     if not datos_existentes:
         # Si la hoja está vacía, subir todo
         worksheet.update('A1', datos)
-        print(f"✓ {len(datos)} filas subidas (hoja estaba vacía)")
+        print(f"{len(datos)} filas subidas (hoja estaba vacía)")
         return
     
     # Obtener la última fila de la hoja
@@ -114,13 +114,13 @@ def subir_datos_incrementales(worksheet, datos):
         
         # Agregar al final de la hoja
         worksheet.append_rows(filas_nuevas)
-        print(f"✓ {len(filas_nuevas)} filas nuevas agregadas")
+        print(f" {len(filas_nuevas)} filas nuevas agregadas")
     else:
-        print("✓ No hay filas nuevas para agregar")
+        print(" No hay filas nuevas para agregar")
 
 def formatear_hoja(worksheet):
     """
-    Aplica formato básico a la hoja
+    Aplica formato basico a la hoja
     """
     print("Aplicando formato...")
     
@@ -138,7 +138,7 @@ def formatear_hoja(worksheet):
     worksheet.set_column_width('E', 80)   # hum
     worksheet.set_column_width('F', 80)   # dist
     
-    print("✓ Formato aplicado")
+    print("Formato aplicado")
 
 # ==========================================================
 # MAIN
@@ -172,7 +172,7 @@ def main():
         formatear_hoja(worksheet)
         
         # 7. Obtener URL de la hoja
-        print(f"\n✓ Proceso completado!")
+        print(f"\n Proceso completado!")
         print(f"URL: {spreadsheet.url}")
         
     except FileNotFoundError:
@@ -181,19 +181,19 @@ def main():
         
     except FileNotFoundError as e:
         if 'credentials.json' in str(e):
-            print(f"\n✗ Error: No se encontró '{CREDENTIALS_FILE}'")
-            print("\nPasos para obtener las credenciales:")
-            print("1. Ve a: https://console.cloud.google.com/")
-            print("2. Crea un proyecto nuevo o selecciona uno existente")
+            print(f"\n Error: No se encontró '{CREDENTIALS_FILE}'")
+            print("\nPasos para obtener las credenciales:") #osea esto es bien importante ya que se tiene que hacer cada quien 
+            print("1. ir a: https://console.cloud.google.com/")
+            print("2. Crear un proyecto nuevo o selecciona uno existente")
             print("3. Habilita la API de Google Sheets y Google Drive")
-            print("4. Ve a 'Credenciales' y crea una 'Cuenta de servicio'")
-            print("5. Descarga el archivo JSON de credenciales")
-            print("6. Renómbralo como 'credentials.json' y colócalo en este directorio")
+            print("4. ir a 'Credenciales' y crea una 'Cuenta de servicio'")
+            print("5. Descargar el archivo JSON de credenciales")
+            print("6. Renómbrarlo como 'credentials.json' y colocarlo en este directorio")
         else:
             raise
             
     except Exception as e:
-        print(f"\n✗ Error inesperado: {e}")
+        print(f"\n Error inesperado: {e}")
 
 if __name__ == "__main__":
     main()
